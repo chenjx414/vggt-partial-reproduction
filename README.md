@@ -36,12 +36,13 @@ parkingmeter 属于较易类别（官方 41 类单类别值中偏上游），因
 2. **实现差异**：官方明确说明其公开的 evaluation 实现与论文内部实现存在约 1.3pt 的差异（官方代码 41 类均值 0.895 高于论文的 0.882）。
 3. **小样本放大效应**：本类别 test 子集过质量过滤后仅 6 条序列，单条序列的波动会直接反映到总分。
 
-## 定性结果
+## 可视化结果
 
-| 输入帧 | 预测深度 | 点云 |
+| 输入帧 | Depthmap and Camera Branch | Pointmap Branch |
 | --- | --- | --- |
 | ![](assets/input.jpg) | ![](assets/Depthmap.png) | ![](assets/Pointmap.png) |
 
+>Confidence Threshold 25%,upload 15 images.
 
 ## 环境
 
@@ -91,7 +92,7 @@ python test_co3d.py --debug --fast_eval \
 
 1. torch 装 `+cpu` 轮子,装完发现 `torch.cuda.is_available()` 为 False；Blackwell 必须指定 cu128 源。
 2. `preprocess_co3d.py` 报 `No module named 'ipdb'`，开头 `import ipdb`、`import matplotlib.pyplot as plt` 是原作者调试残留，删除即可。
-3. 在co3d官网（https://ai.meta.com/datasets/co3d-dataset/）下载parkingmeter压缩包只有2.8G，应该是缺了一些内容，他的set_lists.json里面只有21类，缺少评估需要的test子集6条序列里面的3条，最后是kimi帮我找到了这3条序列。
+3. 在co3d官网（"https://ai.meta.com/datasets/co3d-dataset/"）下载parkingmeter压缩包只有2.8G，应该是缺了一些内容，他的set_lists.json里面只有21类，缺少评估需要的test子集6条序列里面的3条，最后是kimi帮我找到了这3条序列。
 4. 官方分卷中 `parkingmeter_000.zip`（2MB）才是元数据卷（含 `set_lists/`），`parkingmeter_001.zip`（12GB）是纯图像/深度数据。
 5. `test_co3d.py` 顶部 `from ba import ...` 即使不用 BA 也会触发 import，需装好 pycolmap/pyceres，且 `ba.py` 与脚本同目录，我在`from ba import ...`前面加了#将其注释掉。
 
