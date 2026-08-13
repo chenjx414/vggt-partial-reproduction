@@ -14,7 +14,7 @@
 | AUC@5 | 0.7200 | — |
 | AUC@3 | 0.5691 | — |
 
-**结论：与官方单类别参考值相差 1.26 个百分点，在数值抖动范围内，复现成立。**
+**结论：与官方单类别参考值相差 1.26 个百分点，在数值抖动范围内，复现基本成立。**
 
 ### 为什么不是和论文的 88.2 比？
 
@@ -38,13 +38,10 @@ parkingmeter 属于较易类别（官方 41 类单类别值中偏上游），因
 
 ## 定性结果
 
-<!-- 上传前把你的 G、深radio demo 截图度图/点云渲染图放进 assets/ 文件夹，并取消下面的注释 -->
-
-<!--
 | 输入帧 | 预测深度 | 点云 |
 | --- | --- | --- |
-| ![](assets/input.png) | ![](assets/depth.png) | ![](assets/pointcloud.png) |
--->
+| ![](assets/input.jpg) | ![](assets/Depthmap.png) | ![](assets/Pointmap.png) |
+
 
 ## 环境
 
@@ -75,36 +72,32 @@ pip install pycolmap==3.10.0 pyceres==2.3
 python demo_gradio.py   # Gradio 可视化
 ```
 
-### 3. CO3D 评估（单类别小规模协议）
+### 3. CO3D 评估（单类别小规模）
 
 选择 `parkingmeter`：CO3Dv2 中体积最小的类别之一（官方分卷为 2MB 元数据卷 + 12GB 数据卷；评估实际只需 test 子集 6 条序列的 images，约 0.2GB）。
 
 ```bash
-# 预处理：生成 parkingmeter_test.jgz（几秒钟）
+# 预处理：生成 parkingmeter_test.jgz
 python preprocess_co3d.py --category parkingmeter \
     --co3d_v2_dir /path/to/co3d --output_dir /path/to/anno
 
-# 评估：--debug 即只跑 parkingmeter；--fast_eval 对该类别无影响（test 仅 6 条 < 10 条上限）
+# 评估：--debug 即只跑 parkingmeter
 python test_co3d.py --debug --fast_eval \
     --model_path /path/to/model.pt \
     --co3d_dir /path/to/co3d --co3d_anno_dir /path/to/anno --seed 0
 ```
 
-8GB 显存可匹配 10 帧协议；全程约 5 分钟（含模型加载）。
+## 错误尝试
 
-## 踩坑记录
-
-1. **torch 误装 `+cpu` 轮子**：装完发现 `torch.cuda.is_available()` 为 False；Blackwell 必须指定 cu128 源。
-2. **`preprocess_co3d.py` 报 `No module named 'ipdb'`**：开头 `import ipdb`、`import matplotlib.pyplot as plt` 是原作者调试残留，删除即可。
-3. **CO3D v1 / v2 元数据混用 → `KeyError`**：v1 的 `set_lists.json`（`train_known`/`test_unseen` 子集）帧号从 0 开始，v2 的 `set_lists_fewview_dev.json` 从 1 开始，混用会在预处理时 KeyError。务必保证 `frame_annotations.jgz`、`sequence_annotations.jgz`、`set_lists/` 三者同出一版。
-4. **`set_lists` 不在 12GB 大卷里**：官方分卷中 `parkingmeter_000.zip`（2MB）才是元数据卷（含 `set_lists/`），`parkingmeter_001.zip`（12GB）是纯图像/深度数据。
-5. **断点残卷缺帧 → `FileNotFoundError: frameXXXXXX.jpg`**：下载中断后部分解压的序列图片不全，需用完整数据覆盖。
-6. **`ba` / `pycolmap` 依赖**：`test_co3d.py` 顶部 `from ba import ...` 即使不用 BA 也会触发 import，需装好 pycolmap/pyceres，且 `ba.py` 与脚本同目录。
+1. torch 装 `+cpu` 轮子,装完发现 `torch.cuda.is_available()` 为 False；Blackwell 必须指定 cu128 源。
+2. `preprocess_co3d.py` 报 `No module named 'ipdb'`，开头 `import ipdb`、`import matplotlib.pyplot as plt` 是原作者调试残留，删除即可。
+3. 在co3d官网（https://ai.meta.com/datasets/co3d-dataset/）下载parkingmeter压缩包只有2.8G，应该是缺了一些内容，他的set_lists.json里面只有21类，缺少评估需要的test子集6条序列里面的3条，最后是kimi帮我找到了这3条序列。
+4. 官方分卷中 `parkingmeter_000.zip`（2MB）才是元数据卷（含 `set_lists/`），`parkingmeter_001.zip`（12GB）是纯图像/深度数据。
+5. `test_co3d.py` 顶部 `from ba import ...` 即使不用 BA 也会触发 import，需装好 pycolmap/pyceres，且 `ba.py` 与脚本同目录，我在`from ba import ...`前面加了#将其注释掉。
 
 ## 局限说明
 
-- 仅复现单类别（parkingmeter）小规模评估，未覆盖全部 41 类；类别均值口径的 88.2/89.5 需全量数据（单 hydrant 一类约 170GB）。
-- 未运行 BA 变体（`--use_ba`）；未做推理速度基准。
+- 仅复现单类别（parkingmeter）小规模评估，未覆盖全部 41 类；整个co3d数据集有1.4T，我的电脑没有办法带动这么大数据集。
 - 6 条序列 × 10 帧的样本量较小，分数存在自然波动。
 
 ## 数据与权重声明
